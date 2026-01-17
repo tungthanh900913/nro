@@ -43,7 +43,7 @@ namespace NRO_Server.DatabaseManager
                     
                     Server.Gi().Logger.Print("Loading Database...");
                     #region Read Table Task
-                    command.CommandText = "SELECT * FROM `taskoption`";
+                    command.CommandText = "SELECT * FROM `tasks`";
                     var reader = command.ExecuteReader();
                     if (reader.HasRows)
                     {
@@ -70,81 +70,52 @@ namespace NRO_Server.DatabaseManager
                     {
                         while (reader.Read())
                         {
-                            short id = reader.GetInt16(0);
+                            int id = reader.GetInt32(0);
                             string name = reader.GetString(1);
-                            short gender = reader.GetInt16(2);
-                            string detail = reader.GetString(3);
-                            List<string> subNames = JsonConvert.DeserializeObject<List<string>>(reader.GetString(4));
-                            List<short> counts = JsonConvert.DeserializeObject<List<short>>(reader.GetString(5));
-                            List<string> contentInfo = JsonConvert.DeserializeObject<List<string>>(reader.GetString(6));
-                            short gold = reader.GetInt16(7);
-                            short gem = reader.GetInt16(8);
-                            short tNSM = reader.GetInt16(9);
+                            string detail = reader.GetString(2);
+                            List<string> subNames = JsonConvert.DeserializeObject<List<string>>(reader.GetString(3));
+                            List<short> counts = JsonConvert.DeserializeObject<List<short>>(reader.GetString(4));
+                            List<string> contentInfo = JsonConvert.DeserializeObject<List<string>>(reader.GetString(5));
 
-                            switch (gender)
+                            // Add to all gender caches since database doesn't have gender column
+                            for (short gender = 0; gender <= 2; gender++)
                             {
-                                case 0:
-                                    {
-                                        if (!Cache.Gi().TASK_TEMPLATES_0.ContainsKey(id))
-                                        {
-                                            Cache.Gi().TASK_TEMPLATES_0.Add(id, new TaskTemplate()
-                                            {
-                                                Id = id,
-                                                Name = name,
-                                                Gender = gender,
-                                                Detail = detail,
-                                                SubNames = subNames,
-                                                Counts = counts,
-                                                ContentInfo = contentInfo,
-                                                Gold = gold,
-                                                Gem = gem,
-                                                TNSM = tNSM,
-                                            });
-                                        }
-                                        break;
-                                    }
-                                case 1:
-                                    {
-                                        if (!Cache.Gi().TASK_TEMPLATES_1.ContainsKey(id))
-                                        {
-                                            Cache.Gi().TASK_TEMPLATES_1.Add(id, new TaskTemplate()
-                                            {
-                                                Id = id,
-                                                Name = name,
-                                                Gender = gender,
-                                                Detail = detail,
-                                                SubNames = subNames,
-                                                Counts = counts,
-                                                ContentInfo = contentInfo,
-                                                Gold = gold,
-                                                Gem = gem,
-                                                TNSM = tNSM,
-                                            });
-                                        }
-                                        break;
-                                    }
-                                case 2:
-                                    {
-                                        if (!Cache.Gi().TASK_TEMPLATES_2.ContainsKey(id))
-                                        {
-                                            Cache.Gi().TASK_TEMPLATES_2.Add(id, new TaskTemplate()
-                                            {
-                                                Id = id,
-                                                Name = name,
-                                                Gender = gender,
-                                                Detail = detail,
-                                                SubNames = subNames,
-                                                Counts = counts,
-                                                ContentInfo = contentInfo,
-                                                Gold = gold,
-                                                Gem = gem,
-                                                TNSM = tNSM,
-                                            });
-                                        }
-                                        break;
-                                    }
-                            }
+                                var taskTemplate = new TaskTemplate()
+                                {
+                                    Id = (short)id,
+                                    Name = name,
+                                    Gender = gender,
+                                    Detail = detail,
+                                    SubNames = subNames,
+                                    Counts = counts,
+                                    ContentInfo = contentInfo,
+                                    Gold = 0,
+                                    Gem = 0,
+                                    TNSM = 0,
+                                };
 
+                                switch (gender)
+                                {
+                                    case 0:
+                                        if (!Cache.Gi().TASK_TEMPLATES_0.ContainsKey((short)id))
+                                        {
+                                            Cache.Gi().TASK_TEMPLATES_0.Add((short)id, taskTemplate);
+                                        }
+                                        break;
+                                    case 1:
+                                        if (!Cache.Gi().TASK_TEMPLATES_1.ContainsKey((short)id))
+                                        {
+                                            Cache.Gi().TASK_TEMPLATES_1.Add((short)id, taskTemplate);
+                                        }
+                                        break;
+                                    case 2:
+                                        if (!Cache.Gi().TASK_TEMPLATES_2.ContainsKey((short)id))
+                                        {
+                                            Cache.Gi().TASK_TEMPLATES_2.Add((short)id, taskTemplate);
+                                        }
+                                        break;
+                                }
+                            }
                         }
                     }
 
@@ -228,11 +199,30 @@ namespace NRO_Server.DatabaseManager
                     if (reader.HasRows)
                         while (reader.Read())
                         {
+                            var dataString = reader.GetString(2);
+                            short[][] data;
+                            
+                            try
+                            {
+                                // Try to deserialize as short[][] directly
+                                data = JsonConvert.DeserializeObject<short[][]>(dataString);
+                            }
+                            catch
+                            {
+                                // If that fails, try to deserialize as string[] first, then convert each string to short[]
+                                var stringArrays = JsonConvert.DeserializeObject<string[]>(dataString);
+                                data = new short[stringArrays.Length][];
+                                for (int i = 0; i < stringArrays.Length; i++)
+                                {
+                                    data[i] = JsonConvert.DeserializeObject<short[]>(stringArrays[i]);
+                                }
+                            }
+                            
                             Cache.Gi().NRParts.Add(new Part()
                             {
                                 Id = reader.GetInt16(0),
                                 Type = reader.GetByte(1),
-                                Data = JsonConvert.DeserializeObject<short[][]>(reader.GetString(2))
+                                Data = data
                             });
                         }
 
@@ -277,7 +267,7 @@ namespace NRO_Server.DatabaseManager
 
                     #region Read Table limitPower
 
-                    command.CommandText = "SELECT * FROM `limitPower`";
+                    command.CommandText = "SELECT * FROM `limitpower`";
                     reader = command.ExecuteReader();
                     if (reader.HasRows)
                         while (reader.Read())
